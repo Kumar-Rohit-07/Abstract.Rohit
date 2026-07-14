@@ -1,15 +1,14 @@
 import { useState, useRef, useCallback } from "react";
 
-// Replace with your real contact details / links
-const CONTACT_EMAIL = "hello@rohitgupta.dev";
-const CONTACT_PHONE = "+91 00000 00000";
-const CONTACT_LOCATION = "Chennai, India";
+// Real contact details / links
+const CONTACT_EMAIL = "rohit933448@gmail.com";
+const CONTACT_PHONE = "+91 9031562501";
+const CONTACT_LOCATION = "Jamshedpur, Jharkhand";
 
 const SOCIALS = [
-  { label: "GitHub", href: "https://github.com/yourusername", icon: "github" },
-  { label: "LinkedIn", href: "https://linkedin.com/in/yourusername", icon: "linkedin" },
-  { label: "Instagram", href: "https://instagram.com/yourusername", icon: "instagram" },
-  { label: "Twitter", href: "https://twitter.com/yourusername", icon: "twitter" },
+  { label: "GitHub", href: "https://github.com/Kumar-Rohit-07", icon: "github" },
+  { label: "LinkedIn", href: "https://www.linkedin.com/in/rohit-kumar-1b15a8254/", icon: "linkedin" },
+  { label: "Instagram", href: "https://www.instagram.com/_.r0hit._08/", icon: "instagram" },
 ];
 
 const ICONS = {
@@ -22,9 +21,6 @@ const ICONS = {
   instagram: (
     <path d="M12 2.2c3.2 0 3.58.01 4.85.07 1.17.05 1.97.24 2.43.4a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.16.46.35 1.26.4 2.43.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.24 1.97-.4 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.16-1.26.35-2.43.4-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.97-.24-2.43-.4a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.16-.46-.35-1.26-.4-2.43C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85c.05-1.17.24-1.97.4-2.43A4.9 4.9 0 0 1 3.82 3c.5-.5 1.05-.87 1.77-1.15.46-.16 1.26-.35 2.43-.4C9.29 2.21 9.67 2.2 12 2.2zm0 1.8c-3.15 0-3.5.01-4.73.07-1.03.05-1.6.22-1.97.36-.5.19-.85.42-1.22.79-.37.37-.6.72-.79 1.22-.14.37-.31.94-.36 1.97-.06 1.23-.07 1.58-.07 4.73s.01 3.5.07 4.73c.05 1.03.22 1.6.36 1.97.19.5.42.85.79 1.22.37.37.72.6 1.22.79.37.14.94.31 1.97.36 1.23.06 1.58.07 4.73.07s3.5-.01 4.73-.07c1.03-.05 1.6-.22 1.97-.36.5-.19.85-.42 1.22-.79.37-.37.6-.72.79-1.22.14-.37.31-.94.36-1.97.06-1.23.07-1.58.07-4.73s-.01-3.5-.07-4.73c-.05-1.03-.22-1.6-.36-1.97a3.1 3.1 0 0 0-.79-1.22 3.1 3.1 0 0 0-1.22-.79c-.37-.14-.94-.31-1.97-.36-1.23-.06-1.58-.07-4.73-.07zm0 4.3a5.7 5.7 0 1 1 0 11.4 5.7 5.7 0 0 1 0-11.4zm0 1.8a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 0 0 0-7.8zm5.9-1.98a1.33 1.33 0 1 1-2.66 0 1.33 1.33 0 0 1 2.66 0z" />
   ),
-  twitter: (
-    <path d="M22 5.9c-.66.3-1.37.5-2.1.6a3.7 3.7 0 0 0 1.62-2.03 7.3 7.3 0 0 1-2.32.89 3.66 3.66 0 0 0-6.24 3.34A10.4 10.4 0 0 1 5.4 4.7a3.66 3.66 0 0 0 1.13 4.88c-.6-.02-1.16-.19-1.65-.46v.05a3.66 3.66 0 0 0 2.93 3.59c-.53.15-1.1.17-1.63.06a3.66 3.66 0 0 0 3.42 2.54A7.35 7.35 0 0 1 2 16.85a10.37 10.37 0 0 0 5.62 1.65c6.74 0 10.43-5.58 10.43-10.43l-.01-.47A7.4 7.4 0 0 0 22 5.9z" />
-  ),
 };
 
 export default function Contact() {
@@ -32,6 +28,7 @@ export default function Contact() {
   const [status, setStatus] = useState("idle"); // idle | sent
 
   const sectionRef = useRef(null);
+  const rafRef = useRef(null);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -52,8 +49,47 @@ export default function Contact() {
     [form]
   );
 
+  // ---- Gesture-driven background: a soft glow that follows the
+  // pointer (mouse move) or finger (touch move / drag) across the section.
+  const updateGlow = useCallback((clientX, clientY) => {
+    const node = sectionRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      node.style.setProperty("--gx", `${x}%`);
+      node.style.setProperty("--gy", `${y}%`);
+    });
+  }, []);
+
+  const handlePointerMove = useCallback(
+    (e) => {
+      updateGlow(e.clientX, e.clientY);
+    },
+    [updateGlow]
+  );
+
+  const handleTouchMove = useCallback(
+    (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      updateGlow(t.clientX, t.clientY);
+    },
+    [updateGlow]
+  );
+
   return (
-    <section className="contact-page" ref={sectionRef}>
+    <section
+      id="contact"
+      className="contact-page"
+      ref={sectionRef}
+      onMouseMove={handlePointerMove}
+      onTouchMove={handleTouchMove}
+    >
+      <div className="gesture-glow" aria-hidden="true" />
       <div className="contact-inner">
         <header className="contact-header">
           <span className="contact-eyebrow">Say hello</span>
@@ -183,6 +219,8 @@ export default function Contact() {
           --text-dim: #9a968e;
           --gold: #ffd700;
           --red: #b31f24;
+          --gx: 50%;
+          --gy: 30%;
 
           position: relative;
           min-height: 100vh;
@@ -192,6 +230,24 @@ export default function Contact() {
           overflow: hidden;
           padding: 8vh 6vw 10vh;
           font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+        }
+
+        /* ===== Gesture-driven glow layer =====
+           Follows the mouse (or finger, on touch devices) around the
+           section. Sits above the base gradient but below the content. */
+        .gesture-glow {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background: radial-gradient(
+            300px circle at var(--gx) var(--gy),
+            rgba(255, 215, 0, 0.16),
+            rgba(179, 31, 36, 0.08) 40%,
+            transparent 70%
+          );
+          transition: background-position 0.05s linear;
+          mix-blend-mode: screen;
         }
 
         .contact-inner {
@@ -463,6 +519,9 @@ export default function Contact() {
 
         /* ===== Reduced motion ===== */
         @media (prefers-reduced-motion: reduce) {
+          .gesture-glow {
+            display: none;
+          }
           .pulse-dot::after {
             animation: none;
           }

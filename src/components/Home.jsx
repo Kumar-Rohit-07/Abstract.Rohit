@@ -298,7 +298,7 @@ export default function Home() {
   };
 
   // ── Split "UI/UX DESIGNER" into individual letter spans ──────────────────
-  const roleText = ["UI/UX", " ", "DESIGNER"];
+  const roleText = ["VIDEO", " ", "EDITOR"];
   const roleLetterSpans = roleText.map((word, wi) =>
     word === " "
       ? <span key={`space-${wi}`} style={{ display: "inline-block", width: "15px" }} />

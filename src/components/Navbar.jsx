@@ -1,16 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const NAV_LINKS = ["HOME", "ABOUT", "PROJECTS", "SKILLS", "CONTACT"];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Smooth-scrolls to the section whose id matches the clicked link
+  // (e.g. "CONTACT" -> id="contact"), offsetting for the fixed navbar's
+  // own height so the section heading isn't hidden underneath it.
+  const scrollToSection = useCallback((link) => {
+    const targetId = link.toLowerCase();
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+      // Section isn't on this page (or the id doesn't match yet) —
+      // fail quietly instead of doing nothing silently forever.
+      console.warn(`Navbar: no element with id="${targetId}" found.`);
+      return;
+    }
+
+    const navHeight = navRef.current ? navRef.current.offsetHeight : 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - navHeight;
+
+    window.scrollTo({ top, behavior: "smooth" });
+  }, []);
+
+  const handleLinkClick = useCallback(
+    (e, link) => {
+      e.preventDefault();
+      scrollToSection(link);
+      setMenuOpen(false);
+    },
+    [scrollToSection]
+  );
 
   return (
     <>
@@ -168,13 +198,21 @@ export default function Navbar() {
         }
       `}</style>
 
-      <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
-        <a className="nav-logo" href="#">Abstract<span>.Rohit</span></a>
+      <nav className={`navbar${scrolled ? " scrolled" : ""}`} ref={navRef}>
+        <a
+          className="nav-logo"
+          href="#home"
+          onClick={(e) => handleLinkClick(e, "HOME")}
+        >
+          Abstract<span>.Rohit</span>
+        </a>
 
         <ul className="nav-links">
           {NAV_LINKS.map((link) => (
             <li key={link}>
-              <a href={`#${link.toLowerCase()}`}>{link}</a>
+              <a href={`#${link.toLowerCase()}`} onClick={(e) => handleLinkClick(e, link)}>
+                {link}
+              </a>
             </li>
           ))}
         </ul>
@@ -194,7 +232,7 @@ export default function Navbar() {
       <ul className={`nav-mobile${menuOpen ? " open" : ""}`}>
         {NAV_LINKS.map((link) => (
           <li key={link}>
-            <a href={`#${link.toLowerCase()}`} onClick={() => setMenuOpen(false)}>
+            <a href={`#${link.toLowerCase()}`} onClick={(e) => handleLinkClick(e, link)}>
               {link}
             </a>
           </li>

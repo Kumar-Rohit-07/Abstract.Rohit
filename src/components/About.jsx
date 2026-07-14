@@ -388,7 +388,7 @@ export default function About() {
             {headingLetterSpans}
           </h2>
           <p className="body-text">
-            I am a dedicated UI/UX designer with a strong passion for
+            I am a dedicated Video Editor with a strong passion for
             crafting intuitive and engaging digital experiences. With a
             deep understanding of user behavior and design principles, I
             focus on creating interfaces that are both visually appealing
@@ -399,7 +399,7 @@ export default function About() {
             solutions that enhance usability and satisfaction.
             Continuously learning and adapting to new trends, I strive to
             stay ahead in the ever-evolving design landscape. My goal is
-            to design meaningful experiences that not only meet user
+            to create meaningful experiences that not only meet user
             needs but also drive business growth and create lasting
             impressions.
           </p>
