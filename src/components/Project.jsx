@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import "./Project.css";
 import capzyyImg from "../assets/capzyy.png";
 import spodifyVideo from "../assets/spodify.mp4";
-import clientVideo from "../assets/client.mov";
-import podcastVideo from "../assets/podcast.mov";
+import clientVideo from "../assets/client.MOV";
+import podcastVideo from "../assets/podcast.MOV";
 
 const projects = [
   {
@@ -17,7 +17,7 @@ const projects = [
   },
   {
     id: 2,
-    title: "Spodie",
+    title: "Spodif",
     category: "Video",
     description: "Spotify-inspired music app walkthrough.",
     video: spodifyVideo,
