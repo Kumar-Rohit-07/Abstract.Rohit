@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import "./Project.css";
 import capzyyImg from "../assets/capzyy.png";
-import spodifyVideo from "../assets/spodify.mp4";
+import spodifyVideo from "../assets/spodify.MP4";
 import clientVideo from "../assets/client.MOV";
 import podcastVideo from "../assets/podcast.MOV";
 
@@ -17,7 +17,7 @@ const projects = [
   },
   {
     id: 2,
-    title: "Spodif",
+    title: "Spodie",
     category: "Video",
     description: "Spotify-inspired music app walkthrough.",
     video: spodifyVideo,
@@ -194,17 +194,18 @@ export default function Project() {
             const slot = getSlot(index);
             if (slot === "hidden") return null;
             const isVideo = project.type === "video";
+            const hasVideo = isVideo && Boolean(project.video);
 
             return (
               <article
                 key={project.id}
                 className={`project-card slot-${slot}`}
                 onClick={() => {
-                  if (isVideo && slot === "active") setVideoOpen(true);
+                  if (hasVideo && slot === "active") setVideoOpen(true);
                 }}
               >
                 <div className="card-image-wrap">
-                  {isVideo ? (
+                  {hasVideo ? (
                     <video
                       src={project.video}
                       className="card-image"
@@ -214,11 +215,15 @@ export default function Project() {
                       playsInline
                       style={{ cursor: slot === "active" ? "pointer" : "default" }}
                     />
+                  ) : isVideo ? (
+                    <div className="card-image card-video-placeholder">
+                      Video coming soon
+                    </div>
                   ) : (
                     <img src={project.image} alt={project.title} className="card-image" loading="lazy" />
                   )}
                   <div className="card-gradient" />
-                  {isVideo && slot === "active" && (
+                  {hasVideo && slot === "active" && (
                     <div className="play-overlay" aria-hidden="true">
                       <svg viewBox="0 0 24 24" width="28" height="28">
                         <path d="M8 5v14l11-7z" fill="currentColor" />
@@ -233,7 +238,7 @@ export default function Project() {
                   <p className="card-description">{project.description}</p>
 
                   {slot === "active" && (
-                    isVideo ? (
+                    hasVideo ? (
                       <button
                         type="button"
                         className="card-link"
@@ -247,7 +252,7 @@ export default function Project() {
                           <path d="M8 5v14l11-7z" fill="currentColor" />
                         </svg>
                       </button>
-                    ) : (
+                    ) : isVideo ? null : (
                       <a
                         href={project.link}
                         target="_blank"
@@ -316,6 +321,20 @@ export default function Project() {
       )}
 
       <style>{`
+        .card-video-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          background: #1a1a1a;
+          color: rgba(255, 215, 0, 0.6);
+          font-family: 'Rajdhani', sans-serif;
+          font-size: 0.95rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
         .projects-page {
           position: relative;
           overflow: hidden;
