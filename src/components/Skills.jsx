@@ -203,7 +203,7 @@ export default function Skills() {
   const rand = (min, max) => min + Math.random() * (max - min);
 
   const makeMeteor = useCallback((skill, width) => {
-    const radius = rand(METEOR_RADIUS_MIN, METEOR_RADIUS_MAX);
+    const radius = 32;
 
     // craters: concave pockmarks, each shaded with a shadow pit + a bright
     // rim on the light-facing edge to fake real 3D depth on a round body
@@ -750,127 +750,8 @@ export default function Skills() {
 
     // ---------------- realistic 3D-shaded meteoroid ----------------
     const drawMeteor = (m) => {
-      ctx.save();
-      ctx.translate(m.x, m.y);
-      ctx.rotate(m.rotation);
-
-      // perfectly circular silhouette — a round brown meteoroid
-      ctx.beginPath();
-      ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.save();
-      ctx.clip();
-
-      // base brown sphere color, lit from LIGHT_ANGLE so the circle reads as
-      // a 3D ball rather than a flat disc
-      const lightX = Math.cos(LIGHT_ANGLE) * m.radius * 1.1;
-      const lightY = Math.sin(LIGHT_ANGLE) * m.radius * 1.1;
-      const baseGrad = ctx.createRadialGradient(
-        lightX * 0.55, lightY * 0.55, m.radius * 0.05,
-        0, 0, m.radius * 1.2
-      );
-      baseGrad.addColorStop(0, "#d1ac7d");
-      baseGrad.addColorStop(0.32, "#a8804f");
-      baseGrad.addColorStop(0.65, "#7a5738");
-      baseGrad.addColorStop(1, "#2e1f13");
-      ctx.fillStyle = baseGrad;
-      ctx.fillRect(-m.radius, -m.radius, m.radius * 2, m.radius * 2);
-
-      // dark terminator shadow on the side away from the light — this is
-      // what sells the round, spherical (not flat) look
-      const shadowGrad = ctx.createRadialGradient(
-        -lightX * 0.55, -lightY * 0.55, m.radius * 0.1,
-        -lightX * 0.55, -lightY * 0.55, m.radius * 1.25
-      );
-      shadowGrad.addColorStop(0, "rgba(20,10,5,0.6)");
-      shadowGrad.addColorStop(1, "rgba(20,10,5,0)");
-      ctx.fillStyle = shadowGrad;
-      ctx.fillRect(-m.radius, -m.radius, m.radius * 2, m.radius * 2);
-
-      // fine stippled grain across the whole surface for a dusty rock texture
-      m.speckles.forEach((s) => {
-        ctx.beginPath();
-        ctx.arc(s.ox, s.oy, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = s.shade < 0
-          ? `rgba(35,22,12,${0.12 + Math.abs(s.shade) * 0.18})`
-          : `rgba(230,200,150,${0.08 + s.shade * 0.14})`;
-        ctx.fill();
-      });
-
-      // craters: concave feel via a dark pit + a bright rim on the
-      // light-facing edge, so each pockmark reads as a real dent
-      m.craters.forEach((c) => {
-        ctx.save();
-        ctx.translate(c.ox, c.oy);
-
-        const pitGrad = ctx.createRadialGradient(
-          lightX * 0.02, lightY * 0.02, c.r * 0.05,
-          0, 0, c.r
-        );
-        pitGrad.addColorStop(0, "rgba(0,0,0,0.05)");
-        pitGrad.addColorStop(0.6, "rgba(0,0,0,0.35)");
-        pitGrad.addColorStop(1, "rgba(0,0,0,0.55)");
-        ctx.beginPath();
-        ctx.arc(0, 0, c.r, 0, Math.PI * 2);
-        ctx.fillStyle = pitGrad;
-        ctx.fill();
-
-        const rimAngle = Math.atan2(lightY, lightX) + Math.PI;
-        ctx.beginPath();
-        ctx.arc(
-          Math.cos(rimAngle) * c.r * 0.6,
-          Math.sin(rimAngle) * c.r * 0.6,
-          c.r * 0.42, 0, Math.PI * 2
-        );
-        ctx.fillStyle = "rgba(255,235,205,0.18)";
-        ctx.fill();
-
-        ctx.restore();
-      });
-
-      // subtle specular highlight, like light glancing off a curved surface
-      ctx.beginPath();
-      ctx.ellipse(lightX * 0.5, lightY * 0.5, m.radius * 0.22, m.radius * 0.14, LIGHT_ANGLE, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,240,210,0.18)";
-      ctx.fill();
-
-      ctx.restore(); // undo clip
-
-      // crisp rim: bright sliver on the lit edge, dark sliver on the shadow edge
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,225,180,0.3)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(0,0,0,0.55)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.restore();
-
-      // skill icon badge, centered inside the rock, always upright regardless
-      // of the meteor's rotation
-      drawSkillIcon(m.skill, m.x, m.y, m.radius * 0.52);
-
-      // skill name caption, below the rock (upright, not rotated)
-      const lines = wrapSkillText(m.skill);
-      ctx.save();
-      ctx.font = "600 12px Rajdhani, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const lineHeight = 13;
-      const startY = m.y + m.radius + 14;
-      lines.forEach((line, i) => {
-        const ly = startY + i * lineHeight;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(0,0,0,0.7)";
-        ctx.strokeText(line, m.x, ly);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(line, m.x, ly);
-      });
-      ctx.restore();
+      // Draw ONLY the skill logo
+      drawSkillIcon(m.skill, m.x, m.y, m.radius * 0.65);
     };
 
     // ---------------- realistic-ish deep space background ----------------

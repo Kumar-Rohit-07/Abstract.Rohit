@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import "./Project.css";
 import capzyyImg from "../assets/capzyy.png";
 import spodifyVideo from "../assets/spodify.MP4";
 import clientVideo from "../assets/client.MOV";
 import podcastVideo from "../assets/podcast.MOV";
+import "../utils/audioUnlock"; // registers the site-wide click/tap/key listeners
 
 const projects = [
   {
@@ -41,47 +42,171 @@ const projects = [
   },
 ];
 
-export default function Project() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [direction, setDirection] = useState("next");
-  const [videoOpen, setVideoOpen] = useState(false);
-  const total = projects.length;
+/* One card in the carousel: handles its own 3D tilt + hover video playback */
+function Card({ project, onOpenVideo }) {
+  const cardRef = useRef(null);
+  const videoRef = useRef(null);
+  const frame = useRef(null);
+  const isVideo = project.type === "video";
 
-  const sectionRef = useRef(null);
+  const handleMove = useCallback((e) => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const rect = card.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+
+      const rotateY = (px - 0.5) * 16;
+      const rotateX = (0.5 - py) * 16;
+
+      card.style.setProperty("--rx", `${rotateX}deg`);
+      card.style.setProperty("--ry", `${rotateY}deg`);
+      card.style.setProperty("--mx", `${px * 100}%`);
+      card.style.setProperty("--my", `${py * 100}%`);
+    });
+  }, []);
+
+  const handleEnter = useCallback(() => {
+    if (isVideo && videoRef.current) {
+      videoRef.current.play().catch(() => { });
+    }
+  }, [isVideo]);
+
+  const handleLeave = useCallback(() => {
+    const card = cardRef.current;
+    if (card) {
+      card.style.setProperty("--rx", `0deg`);
+      card.style.setProperty("--ry", `0deg`);
+    }
+    if (isVideo && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, [isVideo]);
+
+  const handleClick = () => {
+    if (isVideo) {
+      onOpenVideo(project.video);
+    } else if (project.link) {
+      window.open(project.link, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  return (
+    <article
+      className="proj-card"
+      ref={cardRef}
+      onMouseMove={handleMove}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      onClick={handleClick}
+      tabIndex={0}
+      role="button"
+      aria-label={isVideo ? `Watch ${project.title}` : `View ${project.title}`}
+    >
+      <div className="proj-card__glow" aria-hidden="true" />
+      <div className="proj-card__inner">
+        <div className="proj-card__top">
+          <span className="proj-card__id">{String(project.id).padStart(2, "0")}</span>
+          <span className="proj-card__category">{project.category}</span>
+        </div>
+
+        <div className="proj-card__thumb">
+          {isVideo ? (
+            <>
+              <video
+                ref={videoRef}
+                src={project.video}
+                className="proj-card__media"
+                muted
+                loop
+                playsInline
+                preload="metadata"
+              />
+              <div className="proj-card__play" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20">
+                  <path d="M8 5v14l11-7z" fill="currentColor" />
+                </svg>
+              </div>
+            </>
+          ) : (
+            <img
+              src={project.image}
+              alt={project.title}
+              className="proj-card__media"
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        <h3 className="proj-card__title">{project.title}</h3>
+        <p className="proj-card__desc">{project.description}</p>
+
+        <span className="proj-card__link">
+          {isVideo ? "Watch video" : "View project"}
+          <svg viewBox="0 0 24 24" width="13" height="13">
+            {isVideo ? (
+              <path d="M8 5v14l11-7z" fill="currentColor" />
+            ) : (
+              <path
+                d="M7 17L17 7M17 7H8M17 7v9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
+        </span>
+      </div>
+    </article>
+  );
+}
+
+export default function Project() {
+  const [openVideo, setOpenVideo] = useState(null);
+
   const headingRef = useRef(null);
   const mouseRef = useRef(null);
   const letterRafRef = useRef(null);
+  const sectionRef = useRef(null);
+  const endSentinelRef = useRef(null);
+  const cueFiredRef = useRef(false);
 
-  const goNext = useCallback(() => {
-    setDirection("next");
-    setActiveIndex((i) => (i + 1) % total);
-  }, [total]);
+  // duplicate the list so the marquee loops seamlessly at -50%
+  const loopItems = [...projects, ...projects];
 
-  const goPrev = useCallback(() => {
-    setDirection("prev");
-    setActiveIndex((i) => (i - 1 + total) % total);
-  }, [total]);
-
+  // ---- fire a cue once the visitor is nearing the end of the Projects
+  // section, so the Contact page (rendered further down the same
+  // scrolling page) can start priming its video ahead of time instead
+  // of waiting until it's fully in view. ----
   useEffect(() => {
-    const onKey = (e) => {
-      if (videoOpen) {
-        if (e.key === "Escape") setVideoOpen(false);
-        return;
-      }
-      if (e.key === "ArrowRight") goNext();
-      if (e.key === "ArrowLeft") goPrev();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev, videoOpen]);
+    const sentinel = endSentinelRef.current;
+    if (!sentinel) return;
 
-  const getSlot = (index) => {
-    if (index === activeIndex) return "active";
-    if (index === (activeIndex - 1 + total) % total) return "prev";
-    if (index === (activeIndex + 1) % total) return "next";
-    return "hidden";
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !cueFiredRef.current) {
+            cueFiredRef.current = true;
+            window.dispatchEvent(new Event("contact-video-cue"));
+          }
+        });
+      },
+      // rootMargin pulls the trigger point up so it fires a bit BEFORE
+      // the sentinel is actually visible — i.e. "just before the end"
+      { threshold: 0, rootMargin: "0px 0px -20% 0px" }
+    );
 
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
+  // ambient magnetic letter-tilt effect on the "PROJECTS" heading
   useEffect(() => {
     const headingEl = headingRef.current;
     if (!headingEl) return;
@@ -123,12 +248,14 @@ export default function Project() {
         currents[i].scale = lerp(currents[i].scale, targets[i].scale, LERP);
 
         el.style.transform = `perspective(400px) rotateX(${currents[i].rx}deg) rotateY(${currents[i].ry}deg) scale(${currents[i].scale})`;
-        el.style.color = currents[i].scale > 1.05
-          ? `hsl(51, 100%, ${50 + (currents[i].scale - 1) * 120}%)`
-          : "#FFD700";
-        el.style.textShadow = currents[i].scale > 1.05
-          ? `0 0 ${20 * (currents[i].scale - 1) * 4}px rgba(255,215,0,0.7)`
-          : "0 0 60px rgba(255,215,0,0.4)";
+        el.style.color =
+          currents[i].scale > 1.05
+            ? `hsl(42, 100%, ${50 + (currents[i].scale - 1) * 120}%)`
+            : "#d4a537";
+        el.style.textShadow =
+          currents[i].scale > 1.05
+            ? `0 0 ${20 * (currents[i].scale - 1) * 4}px rgba(212,165,55,0.7)`
+            : "0 0 60px rgba(212,165,55,0.35)";
       });
 
       letterRafRef.current = requestAnimationFrame(animate);
@@ -138,233 +265,78 @@ export default function Project() {
     return () => cancelAnimationFrame(letterRafRef.current);
   }, []);
 
-  const onMouseMove = (e) => {
+  const handleSectionMouseMove = (e) => {
     mouseRef.current = { x: e.clientX, y: e.clientY };
   };
-  const onMouseLeave = () => {
+  const handleSectionMouseLeave = () => {
     mouseRef.current = null;
   };
 
   const headingLetters = "PROJECTS".split("").map((char, i) => (
-    <span
-      key={i}
-      className="proj-letter"
-      style={{
-        display: "inline-block",
-        transition: "color 0.15s",
-        willChange: "transform, color",
-        transformOrigin: "center center",
-      }}
-    >
+    <span key={i} className="proj-letter">
       {char}
     </span>
   ));
 
   return (
     <section
+      className="project-section"
       id="projects"
-      className="projects-page"
       ref={sectionRef}
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
+      onMouseMove={handleSectionMouseMove}
+      onMouseLeave={handleSectionMouseLeave}
     >
-      <h1 className="projects-heading" ref={headingRef}>
-        <span className="heading-line">{headingLetters}</span>
-        <span className="heading-index">
-          {String(activeIndex + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-        </span>
-      </h1>
-
-      <div className="stack-container">
-        {total > 1 && (
-          <button
-            type="button"
-            className="nav-btn nav-left"
-            onClick={goPrev}
-            aria-label="Previous project"
-          >
-            <svg viewBox="0 0 24 24" width="22" height="22">
-              <path d="M15 4L7 12l8 8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
-
-        <div className="card-stack">
-          {projects.map((project, index) => {
-            const slot = getSlot(index);
-            if (slot === "hidden") return null;
-            const isVideo = project.type === "video";
-            const hasVideo = isVideo && Boolean(project.video);
-
-            return (
-              <article
-                key={project.id}
-                className={`project-card slot-${slot}`}
-                onClick={() => {
-                  if (hasVideo && slot === "active") setVideoOpen(true);
-                }}
-              >
-                <div className="card-image-wrap">
-                  {hasVideo ? (
-                    <video
-                      src={project.video}
-                      className="card-image"
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                      style={{ cursor: slot === "active" ? "pointer" : "default" }}
-                    />
-                  ) : isVideo ? (
-                    <div className="card-image card-video-placeholder">
-                      Video coming soon
-                    </div>
-                  ) : (
-                    <img src={project.image} alt={project.title} className="card-image" loading="lazy" />
-                  )}
-                  <div className="card-gradient" />
-                  {hasVideo && slot === "active" && (
-                    <div className="play-overlay" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="28" height="28">
-                        <path d="M8 5v14l11-7z" fill="currentColor" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-
-                <div className="card-content">
-                  <span className="card-category">{project.category}</span>
-                  <h2 className="card-title">{project.title}</h2>
-                  <p className="card-description">{project.description}</p>
-
-                  {slot === "active" && (
-                    hasVideo ? (
-                      <button
-                        type="button"
-                        className="card-link"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setVideoOpen(true);
-                        }}
-                      >
-                        Watch Video
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                          <path d="M8 5v14l11-7z" fill="currentColor" />
-                        </svg>
-                      </button>
-                    ) : isVideo ? null : (
-                      <a
-                        href={project.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="card-link"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        View Project
-                        <svg viewBox="0 0 24 24" width="14" height="14">
-                          <path d="M7 17L17 7M17 7H8M17 7v9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </a>
-                    )
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-
-        {total > 1 && (
-          <button
-            type="button"
-            className="nav-btn nav-right"
-            onClick={goNext}
-            aria-label="Next project"
-          >
-            <svg viewBox="0 0 24 24" width="22" height="22">
-              <path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
+      <div className="project-section__noise" aria-hidden="true" />
+      <div className="project-section__vignette" aria-hidden="true" />
+      <div className="project-bg-text" aria-hidden="true">
+        UI/UX DESIGNER
       </div>
 
-      {total > 1 && (
-        <div className="dots">
-          {projects.map((project, index) => (
-            <button
-              key={project.id}
-              type="button"
-              className={`dot ${index === activeIndex ? "dot-active" : ""}`}
-              onClick={() => {
-                setDirection(index > activeIndex ? "next" : "prev");
-                setActiveIndex(index);
-              }}
-              aria-label={`Go to ${project.title}`}
+      <header className="project-section__header">
+        <span className="project-section__eyebrow">Selected Work</span>
+        <h2 className="project-section__title" ref={headingRef}>
+          {headingLetters}
+        </h2>
+        <p className="project-section__sub">
+          Hover a card to pause and tilt it toward you — click to open the
+          site or watch the video.
+        </p>
+      </header>
+
+      <div className="marquee">
+        <div className="marquee__track">
+          {loopItems.map((project, i) => (
+            <Card
+              project={project}
+              key={`${project.id}-${i}`}
+              onOpenVideo={setOpenVideo}
             />
           ))}
         </div>
-      )}
+      </div>
 
-      {videoOpen && (
-        <div className="video-modal" onClick={() => setVideoOpen(false)}>
-          <div className="video-modal-inner" onClick={(e) => e.stopPropagation()}>
+      {/* invisible marker near the bottom of the section — used only to
+          detect "the visitor is about to leave Projects" */}
+      <div ref={endSentinelRef} className="project-end-sentinel" aria-hidden="true" />
+
+      {openVideo && (
+        <div className="video-modal" onClick={() => setOpenVideo(null)}>
+          <div
+            className="video-modal-inner"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               className="video-modal-close"
-              onClick={() => setVideoOpen(false)}
+              onClick={() => setOpenVideo(null)}
               aria-label="Close video"
             >
               ✕
             </button>
-            <video src={projects[activeIndex].video} controls autoPlay />
+            <video src={openVideo} controls autoPlay />
           </div>
         </div>
       )}
-
-      <style>{`
-        .card-video-placeholder {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 100%;
-          background: #1a1a1a;
-          color: rgba(255, 215, 0, 0.6);
-          font-family: 'Rajdhani', sans-serif;
-          font-size: 0.95rem;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .projects-page {
-          position: relative;
-          overflow: hidden;
-          background-color: #0a0a0a;
-          background-image:
-            repeating-linear-gradient(45deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.00) 1px, transparent 1px, transparent 90px),
-            repeating-linear-gradient(-45deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.00) 1px, transparent 1px, transparent 90px),
-            repeating-linear-gradient(45deg, rgba(255,215,0,0.05) 0px, rgba(255,215,0,0.05) 1px, transparent 1px, transparent 450px),
-            repeating-linear-gradient(-45deg, rgba(255,215,0,0.05) 0px, rgba(255,215,0,0.05) 1px, transparent 1px, transparent 450px),
-            repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px 45px, rgba(0,0,0,0.35) 45px 90px),
-            repeating-linear-gradient(-45deg, rgba(255,255,255,0.02) 0px 45px, rgba(0,0,0,0.25) 45px 90px),
-            radial-gradient(ellipse at top, #2a2a2e 0%, #17171a 45%, #0a0a0a 100%) !important;
-          background-blend-mode: screen, screen, screen, screen, overlay, overlay, normal;
-        }
-
-        .projects-heading,
-        .stack-container,
-        .dots {
-          position: relative;
-          z-index: 2;
-        }
-
-        .proj-letter {
-          display: inline-block;
-          will-change: transform, color, text-shadow;
-          cursor: crosshair;
-          color: #FFD700;
-          text-shadow: 0 0 60px rgba(255,215,0,0.4);
-        }
-      `}</style>
     </section>
   );
 }

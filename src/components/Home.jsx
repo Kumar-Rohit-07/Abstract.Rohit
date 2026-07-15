@@ -298,7 +298,7 @@ export default function Home() {
   };
 
   // ── Split "UI/UX DESIGNER" into individual letter spans ──────────────────
-  const roleText = ["VIDEO", " ", "EDITOR"];
+  const roleText = ["UI/UX", " ", "DESIGNER"];
   const roleLetterSpans = roleText.map((word, wi) =>
     word === " "
       ? <span key={`space-${wi}`} style={{ display: "inline-block", width: "15px" }} />
@@ -565,13 +565,7 @@ export default function Home() {
           <div className="hero-gap" />
           <div className="hero-right">
             <p className="hero-desc">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-              ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut
-              aliquip ex ea commodo consequat. Duis aute irure dolor in
-              reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
-              pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
-              culpa qui officia deserunt mollit anim id est laborum.
+              I design intuitive, user-centered digital experiences that combine creativity with functionality. By focusing on usability, accessibility, and modern design principles, I create clean, engaging interfaces that enhance user satisfaction. My goal is to transform ideas into visually appealing, responsive, and seamless experiences that deliver real value to users and businesses.
             </p>
             <a href="#contact" className="hero-btn-touch">Get In Touch</a>
           </div>
