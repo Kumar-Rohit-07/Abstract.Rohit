@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import boyVideo from "../assets/boy-sitting.mp4";
 import contactBg from "../assets/content-king-bg.png";
-import { isAudioUnlocked, onAudioUnlock } from "../utils/audioUnlock";
+import { isAudioUnlocked, onAudioUnlock } from "../utils/Audiounlock";
 
 // ============================================================
 //  REAL CONTACT DETAILS

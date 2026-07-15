@@ -4,7 +4,7 @@ import capzyyImg from "../assets/capzyy.png";
 import spodifyVideo from "../assets/spodify.MP4";
 import clientVideo from "../assets/client.MOV";
 import podcastVideo from "../assets/podcast.MOV";
-import "../utils/audioUnlock"; // registers the site-wide click/tap/key listeners
+import "../utils/Udiounlock"; // registers the site-wide click/tap/key listeners
 
 const projects = [
   {
