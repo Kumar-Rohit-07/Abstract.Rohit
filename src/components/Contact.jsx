@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import boyVideo from "../assets/boy-sitting.mp4";
+import emailjs from "@emailjs/browser";
 import contactBg from "../assets/content-king-bg.png";
-import { isAudioUnlocked, onAudioUnlock } from "../utils/Audiounlock";
 
 // ============================================================
 //  REAL CONTACT DETAILS
@@ -9,6 +8,17 @@ import { isAudioUnlocked, onAudioUnlock } from "../utils/Audiounlock";
 const CONTACT_EMAIL = "rohit933448@gmail.com";
 const CONTACT_PHONE = "+91 9031562501";
 const CONTACT_LOCATION = "Jamshedpur, Jharkhand";
+
+// ============================================================
+//  EMAILJS CONFIG  —  https://www.emailjs.com
+//  1. Sign up, add an Email Service (connect your Gmail).
+//  2. Create an Email Template with variables:
+//     {{from_name}}, {{from_email}}, {{message}}
+//  3. Paste your Service ID / Template ID / Public Key below.
+// ============================================================
+const EMAILJS_SERVICE_ID = "service_oxragre";
+const EMAILJS_TEMPLATE_ID = "template_5d89hrx";
+const EMAILJS_PUBLIC_KEY = "x4K8hH6cs0EBurgRR";
 
 const SOCIALS = [
   { label: "GitHub", href: "https://github.com/Kumar-Rohit-07", icon: "github" },
@@ -36,123 +46,46 @@ const HEADING_INFLUENCE_RADIUS = 140;
 // --------------------------------------------------------------------------------
 
 export default function Contact() {
-  // "video" -> playing the intro clip. "contact" -> normal contact page.
-  const [stage, setStage] = useState("video");
-  const [muted, setMuted] = useState(false);
-  const [needsSoundTap, setNeedsSoundTap] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [status, setStatus] = useState("idle");
 
-  const videoRef = useRef(null);
   const sectionRef = useRef(null);
   const headingRef = useRef(null);
   const rawMouseRef = useRef(null);
   const headingRafRef = useRef(null);
-  const hasTriggeredRef = useRef(false);
-
-  const goToContact = () => setStage("contact");
-
-  const tryPlayWithSound = () => {
-    const v = videoRef.current;
-    if (!v || hasTriggeredRef.current) return;
-    hasTriggeredRef.current = true;
-
-    if (isAudioUnlocked()) {
-      v.muted = false;
-      setMuted(false);
-      v.play().catch(() => {
-        v.muted = true;
-        setMuted(true);
-        setNeedsSoundTap(true);
-        v.play().catch(() => {});
-      });
-    } else {
-      // no click/tap/key press has happened yet this session — browsers
-      // won't allow sound without one. Start muted and offer a tap.
-      v.muted = true;
-      setMuted(true);
-      setNeedsSoundTap(true);
-      v.play().catch(() => {});
-    }
-  };
-
-  // trigger 1: an early cue fired from Project.jsx once the visitor is
-  // nearing the end of the Projects section, just above this one
-  useEffect(() => {
-    const onCue = () => tryPlayWithSound();
-    window.addEventListener("contact-video-cue", onCue);
-    return () => window.removeEventListener("contact-video-cue", onCue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // trigger 2: fallback — if the cue never fires (e.g. this section
-  // somehow loads without Projects above it), start once Contact itself
-  // scrolls into view
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && stage === "video") tryPlayWithSound();
-        });
-      },
-      { threshold: 0.5 }
-    );
-
-    observer.observe(section);
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
-
-  // if sound was blocked and the visitor later interacts anywhere on the
-  // page, unmute automatically rather than waiting for them to find the
-  // tap-for-sound button
-  useEffect(() => {
-    if (!needsSoundTap) return;
-    return onAudioUnlock(() => {
-      const v = videoRef.current;
-      if (!v) return;
-      v.muted = false;
-      setMuted(false);
-      setNeedsSoundTap(false);
-      v.play().catch(() => {});
-    });
-  }, [needsSoundTap]);
-
-  const enableSound = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = false;
-    setMuted(false);
-    setNeedsSoundTap(false);
-    v.play().catch(() => {});
-  };
-
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-    videoRef.current.muted = !videoRef.current.muted;
-    setMuted(videoRef.current.muted);
-    if (!videoRef.current.muted) setNeedsSoundTap(false);
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const subject = encodeURIComponent(`Portfolio inquiry from ${form.name || "a visitor"}`);
-    const body = encodeURIComponent(`${form.message}\n\n— ${form.name} (${form.email})`);
-    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    setStatus("sent");
+    if (status === "sending") return;
+    setStatus("sending");
+
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          from_name: form.name,
+          from_email: form.email,
+          message: form.message,
+          to_email: CONTACT_EMAIL,
+        },
+        { publicKey: EMAILJS_PUBLIC_KEY }
+      );
+      setStatus("sent");
+      setForm({ name: "", email: "", message: "" });
+    } catch (err) {
+      console.error("EmailJS send failed:", err?.text || err?.message || err);
+      setStatus("error");
+    }
   };
 
   // ---------------- GET IN TOUCH letter mouse tracking (mirrors About.jsx heading effect) ----------------
   useEffect(() => {
-    if (stage !== "contact") return;
     const headingEl = headingRef.current;
     if (!headingEl) return;
 
@@ -201,7 +134,7 @@ export default function Contact() {
 
     headingRafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(headingRafRef.current);
-  }, [stage]);
+  }, []);
   // -----------------------------------------------------------
 
   // split "GET IN TOUCH" into individual letter spans, same pattern as About.jsx
@@ -231,121 +164,91 @@ export default function Contact() {
 
   return (
     <section id="contact" className="contact-page" ref={sectionRef}>
-      {/* ---------------- VIDEO INTRO ---------------- */}
-      {stage === "video" && (
-        <div className="video-intro">
-          <video
-            ref={videoRef}
-            className="intro-video"
-            src={boyVideo}
-            playsInline
-            onEnded={goToContact}
-          />
+      <div
+        className="contact-shell"
+        onMouseMove={(e) => { rawMouseRef.current = { x: e.clientX, y: e.clientY }; }}
+        onMouseLeave={() => { rawMouseRef.current = null; }}
+      >
+        <div className="contact-bg" />
+        <div className="contact-bg-overlay" />
 
-          {needsSoundTap && (
-            <button className="sound-prompt" onClick={enableSound}>
-              🔊 Tap for sound
-            </button>
-          )}
+        <div className="contact-shell-inner">
+          <header className="reveal-heading">
+            <h1 className="contact-heading" ref={headingRef}>
+              {headingLetterSpans}
+            </h1>
+            <p>Got a project in mind? Here's how to reach me.</p>
+          </header>
 
-          <button className="mute-btn" onClick={toggleMute} aria-label={muted ? "Unmute" : "Mute"}>
-            {muted ? (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 5 6 9H2v6h4l5 4V5z" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 5 6 9H2v6h4l5 4V5z" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-                <path d="M18.5 5.5a9 9 0 0 1 0 13" />
-              </svg>
-            )}
-          </button>
-
-          <button className="skip-btn" onClick={goToContact}>
-            Skip <span>→</span>
-          </button>
-        </div>
-      )}
-
-      {/* ---------------- NORMAL CONTACT PAGE ---------------- */}
-      {stage === "contact" && (
-        <div
-          className="contact-shell"
-          onMouseMove={(e) => { rawMouseRef.current = { x: e.clientX, y: e.clientY }; }}
-          onMouseLeave={() => { rawMouseRef.current = null; }}
-        >
-          <div className="contact-bg" />
-          <div className="contact-bg-overlay" />
-
-          <div className="contact-shell-inner">
-            <header className="reveal-heading">
-              <h1 className="contact-heading" ref={headingRef}>
-                {headingLetterSpans}
-              </h1>
-              <p>Got a project in mind? Here's how to reach me.</p>
-            </header>
-
-            <div className="reveal-boxes">
-              <div className="contact-info">
-                <div className="info-row">
-                  <span className="info-label">Email</span>
-                  <a className="info-value" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Phone</span>
-                  <a className="info-value" href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`}>{CONTACT_PHONE}</a>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Location</span>
-                  <span className="info-value">{CONTACT_LOCATION}</span>
-                </div>
-
-                <div className="info-divider" />
-
-                <div className="social-row">
-                  {SOCIALS.map((s) => (
-                    <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="social-btn" aria-label={s.label}>
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">{ICONS[s.icon]}</svg>
-                    </a>
-                  ))}
-                </div>
-
-                <div className="availability">
-                  <span className="pulse-dot" />
-                  Currently available for freelance &amp; full-time work
-                </div>
+          <div className="reveal-boxes">
+            <div className="contact-info">
+              <div className="info-row">
+                <span className="info-label">Email</span>
+                <a className="info-value" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Phone</span>
+                <a className="info-value" href={`tel:${CONTACT_PHONE.replace(/\s/g, "")}`}>{CONTACT_PHONE}</a>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Location</span>
+                <span className="info-value">{CONTACT_LOCATION}</span>
               </div>
 
-              <form className="contact-form" onSubmit={handleSubmit}>
-                <div className="field">
-                  <input type="text" name="name" id="name" required value={form.name} onChange={handleChange} placeholder=" " />
-                  <label htmlFor="name">Your name</label>
-                </div>
-                <div className="field">
-                  <input type="email" name="email" id="email" required value={form.email} onChange={handleChange} placeholder=" " />
-                  <label htmlFor="email">Your email</label>
-                </div>
-                <div className="field">
-                  <textarea name="message" id="message" rows={4} required value={form.message} onChange={handleChange} placeholder=" " />
-                  <label htmlFor="message">Tell me about your project</label>
-                </div>
-                <button type="submit" className="submit-btn">
-                  <span>{status === "sent" ? "Opening your mail app…" : "Send Message"}</span>
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {status === "sent" && (
-                  <p className="form-note">Your mail app should open with the message ready — hit send there to reach me.</p>
-                )}
-              </form>
+              <div className="info-divider" />
+
+              <div className="social-row">
+                {SOCIALS.map((s) => (
+                  <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" className="social-btn" aria-label={s.label}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">{ICONS[s.icon]}</svg>
+                  </a>
+                ))}
+              </div>
+
+              <div className="availability">
+                <span className="pulse-dot" />
+                Currently available for freelance &amp; full-time work
+              </div>
             </div>
+
+            <form className="contact-form" onSubmit={handleSubmit}>
+              <div className="field">
+                <input type="text" name="name" id="name" required value={form.name} onChange={handleChange} placeholder=" " />
+                <label htmlFor="name">Your name</label>
+              </div>
+              <div className="field">
+                <input type="email" name="email" id="email" required value={form.email} onChange={handleChange} placeholder=" " />
+                <label htmlFor="email">Your email</label>
+              </div>
+              <div className="field">
+                <textarea name="message" id="message" rows={4} required value={form.message} onChange={handleChange} placeholder=" " />
+                <label htmlFor="message">Tell me about your project</label>
+              </div>
+              <button type="submit" className="submit-btn" disabled={status === "sending"}>
+                <span>
+                  {status === "sending"
+                    ? "Sending…"
+                    : status === "sent"
+                    ? "Message sent!"
+                    : "Send Message"}
+                </span>
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {status === "sent" && (
+                <p className="form-note">Thanks! Your message has been sent — I'll get back to you soon.</p>
+              )}
+              {status === "error" && (
+                <p className="form-note form-note-error">
+                  Something went wrong sending your message. Please try again, or email me directly at{" "}
+                  <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+                </p>
+              )}
+            </form>
           </div>
         </div>
-      )}
+      </div>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@400;500;600&display=swap');
@@ -363,86 +266,6 @@ export default function Contact() {
           background: #0a0a0a;
           color: var(--text);
           font-family: 'Poppins', system-ui, -apple-system, sans-serif;
-        }
-
-        /* ===== Video intro ===== */
-        .video-intro {
-          position: relative;
-          min-height: 100vh;
-          width: 100%;
-          background: #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-        }
-
-        .intro-video {
-          width: 100%;
-          height: 100vh;
-          object-fit: cover;
-          display: block;
-        }
-
-        .mute-btn,
-        .skip-btn {
-          position: absolute;
-          z-index: 5;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: rgba(0, 0, 0, 0.45);
-          backdrop-filter: blur(6px);
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          color: var(--text);
-          border-radius: 999px;
-          cursor: pointer;
-          transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-        }
-
-        .mute-btn {
-          top: 24px;
-          left: 24px;
-          width: 40px;
-          height: 40px;
-          justify-content: center;
-        }
-
-        .skip-btn {
-          top: 24px;
-          right: 24px;
-          padding: 8px 14px;
-          font-size: 0.78rem;
-          letter-spacing: 0.04em;
-        }
-
-        .mute-btn:hover,
-        .skip-btn:hover {
-          color: var(--gold);
-          border-color: var(--gold);
-          background: rgba(0, 0, 0, 0.6);
-        }
-
-        .sound-prompt {
-          position: absolute;
-          z-index: 6;
-          bottom: 40px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(6px);
-          border: 1px solid var(--gold);
-          color: var(--gold);
-          border-radius: 999px;
-          padding: 10px 18px;
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          animation: sound-pulse 1.6s ease-in-out infinite;
-        }
-        @keyframes sound-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.35); }
-          50% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
         }
 
         /* ===== Normal contact page (black theme + blended background) ===== */
@@ -674,10 +497,15 @@ export default function Contact() {
           box-shadow: 0 0 28px rgba(255, 215, 0, 0.3);
         }
         .submit-btn:active { transform: scale(0.97); }
+        .submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
         .submit-btn svg { transition: transform 0.2s ease; }
         .submit-btn:hover svg { transform: translateX(3px); }
 
         .form-note { margin: 0; font-size: 0.8rem; color: var(--text-dim); }
+        .form-note-error { color: var(--red); }
 
         /* ===== Responsive: stack the boxes only on small screens ===== */
         @media (max-width: 760px) {
